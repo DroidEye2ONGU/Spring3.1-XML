@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd">
+
+    <!-- 导入资源文件 -->
+    <context:property-placeholder location="classpath:db.properties"/>
+
+    <!-- 配置数据池 -->
+    <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource">
+        <property name="url" value="${jdbc.url}"/>
+        <property name="driverClassName" value="${jdbc.driver}"/>
+        <property name="username" value="${jdbc.user}"/>
+        <property name="password" value="${jdbc.password}"/>
+
+
+        <property name="initialSize" value="${jdbc.initPoolSize}"/>
+        <property name="maxActive" value="${jdbc.maxPoolSize}"/>
+    </bean>
+
+    <!-- 配置Spring的JdbcTemplate的Bean -->
+    <bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+
+    <!-- 配置Bean -->
+    <bean class="TX_XML.Dao.BookShopDaoImpl" id="bookShopDao">
+        <property name="jdbcTemplate" ref="jdbcTemplate"/>
+    </bean>
+
+    <bean class="TX_XML.ServiceImpl.BookShopServiceImpl" id="bookShopService">
+        <property name="bookShopDao" ref="bookShopDao"/>
+    </bean>
+
+    <bean class="TX_XML.ServiceImpl.CashierImpl" id="cashier">
+        <property name="bookShopService" ref="bookShopService"/>
+    </bean>
+
+    <!-- 开始配置事务 -->
+    <!-- 1.配置事务管理器 -->
+    <bean class="org.springframework.jdbc.datasource.DataSourceTransactionManager"
+          id="transactionManager">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+
+    <!-- 2.配置事务属性 -->
+    <tx:advice id="txAdvice" transaction-manager="transactionManager">
+        <tx:attributes>
+            <tx:method name="purchase" propagation="REQUIRES_NEW"/>
+            <tx:method name="*"/>
+        </tx:attributes>
+    </tx:advice>
+
+    <!-- 3.配置事务切入点,以及把事务切入点和事务属性关联起来 -->
+    <aop:config>
+        <!-- expression 中填写的是../Service下的接口的所有方法-->
+        <aop:pointcut id="txPoint" expression="execution(* TX_XML.Service.*.*(..))"/>
+        <aop:advisor advice-ref="txAdvice" pointcut-ref="txPoint"/>
+
+    </aop:config>
+
+</beans>
